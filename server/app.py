@@ -25,13 +25,9 @@ class Signup(Resource):
 
         username = request_json.get('username')
         password = request_json.get('password')
-        image_url = request_json.get('image_url')
-        bio = request_json.get('bio')
 
         user = User(
-            username=username,
-            image_url=image_url,
-            bio=bio
+            username=username
         )
         user.password_hash = password
         
