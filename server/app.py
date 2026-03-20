@@ -64,9 +64,15 @@ class Login(Resource):
 
 class ExpensesList(Resource):
     def get(self):
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 5, type=int)
         user_id = get_jwt_identity()
-        expenses = Expenses.query.filter(Expenses.user_id == user_id).all()
-        return make_response(jsonify(ExpensesSchema(many=True).dump(expenses)), 200)
+        expenses = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
+                                                                               per_page=per_page,
+                                                                               error_out=False)
+        return make_response(jsonify({"page": page,
+                                      "per_page": per_page,
+                                      "expenses": ExpensesSchema(many=True).dump(expenses.items)}), 200)
     
     def post(self):
         user_id = get_jwt_identity()
