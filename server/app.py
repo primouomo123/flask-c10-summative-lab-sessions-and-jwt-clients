@@ -81,10 +81,45 @@ class ExpensesList(Resource):
         except Exception as e:
             return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
+class ExpenseDetail(Resource):
+    def get(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if expense:
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 200)
+        return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+    def patch(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if not expense:
+            return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+        request_json = request.get_json()
+        for key, value in request_json.items():
+            setattr(expense, key, value)
+
+        try:
+            db.session.commit()
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 200)
+        except Exception as e:
+            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
+    
+    def delete(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if not expense:
+            return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+        db.session.delete(expense)
+        db.session.commit()
+        return make_response(jsonify({}), 204)
+
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(WhoAmI, '/me', endpoint='me')
 api.add_resource(Login, '/login', endpoint='login')
 api.add_resource(ExpensesList, '/expenses', endpoint='expenses')
+api.add_resource(ExpenseDetail, '/expenses/<int:id>', endpoint='expense_detail')
 
 
 if __name__ == '__main__':
