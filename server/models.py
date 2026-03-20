@@ -39,6 +39,8 @@ class User(db.Model):
         if User.query.filter_by(username=value).first():
             raise ValueError(f"{key} must be unique.")        
         return value
+    
+    expenses = db.relationship('Expenses', back_populates='user', cascade='all, delete-orphan')
 
 
 class Expenses(db.Model):
@@ -79,3 +81,5 @@ class Expenses(db.Model):
         if value not in category_choices:
             raise ValueError(f"{key} must be one of {category_choices}.")        
         return value
+    
+    user = db.relationship('User', back_populates='expenses')
