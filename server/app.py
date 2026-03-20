@@ -67,6 +67,19 @@ class ExpensesList(Resource):
         user_id = get_jwt_identity()
         expenses = Expenses.query.filter(Expenses.user_id == user_id).all()
         return make_response(jsonify(ExpensesSchema(many=True).dump(expenses)), 200)
+    
+    def post(self):
+        user_id = get_jwt_identity()
+        request_json = request.get_json()
+        request_json['user_id'] = user_id
+
+        try:
+            expense = ExpensesSchema().load(request_json)
+            db.session.add(expense)
+            db.session.commit()
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 201)
+        except Exception as e:
+            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(WhoAmI, '/me', endpoint='me')
