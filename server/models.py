@@ -1,7 +1,7 @@
 from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import validates as model_validates
 from sqlalchemy.ext.hybrid import hybrid_property
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from marshmallow import Schema, fields, validate, validates as schema_validates, ValidationError, RAISE
 
 from config import db, bcrypt
 
@@ -83,3 +83,75 @@ class Expenses(db.Model):
         return value
     
     user = db.relationship('User', back_populates='expenses')
+
+
+
+class UserSchema(Schema):
+    id = fields.Int(dump_only=True)
+    username = fields.Str(required=True, validate=validate.Length(min=5, max=50))
+    password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(min=128, max=128))
+
+    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
+
+    class Meta:
+        unknown = RAISE
+        ordered = True
+    
+    @schema_validates('username')
+    def validate_unique_username(self, value, **kwargs):
+        if not isinstance(value, str):
+            raise ValidationError("Username must be a string.", field_name='username')
+        if len(value) < 5 or len(value) > 50:
+            raise ValidationError("Username must be between 5 and 50 characters long.", field_name='username')
+        if User.query.filter_by(username=value).first():
+            raise ValidationError("Username must be unique.", field_name='username')
+        return value
+            
+
+
+class ExpensesSchema(Schema):
+    id = fields.Int(dump_only=True)
+    amount = fields.Float(required=True, validate=validate.Range(min=0.01))
+    description = fields.Str(required=True, validate=validate.Length(min=5, max=255))
+    category = fields.Str(required=True, validate=validate.OneOf(category_choices))
+    user_id = fields.Int(load_only=True, required=True)
+
+    user = fields.Nested(UserSchema(exclude=('expenses',)), many=True, dump_only=True)
+
+    class Meta:
+        unknown = RAISE
+        ordered = True
+    
+    @schema_validates('amount')
+    def validate_amount(self, value, **kwargs):
+        if not isinstance(value, (int, float)):
+            raise ValidationError("Amount must be a number.", field_name='amount')
+        if value <= 0:
+            raise ValidationError("Amount must be greater than 0.", field_name='amount')
+        return value
+    
+    @schema_validates('description')
+    def validate_description(self, value, **kwargs):
+        if not isinstance(value, str):
+            raise ValidationError("Description must be a string.", field_name='description')
+        if len(value) < 5 or len(value) > 255:
+            raise ValidationError("Description must be between 5 and 255 characters long.", field_name='description')
+        return value
+    
+    @schema_validates('category')
+    def validate_category(self, value, **kwargs):
+        if not isinstance(value, str):
+            raise ValidationError("Category must be a string.", field_name='category')
+        if value not in category_choices:
+            raise ValidationError(f"Category must be one of {category_choices}.", field_name='category')
+        return value
+    
+    @schema_validates('user_id')
+    def validate_user_exists(self, value, **kwargs):
+        user_id = value.get('user_id')
+        if not isinstance(value, int):
+            raise ValidationError("User ID must be an integer.", field_name='user_id')
+        if user_id <= 0:
+            raise ValidationError("User ID must be a positive integer.", field_name='user_id')
+        if not User.query.get(user_id):
+            raise ValidationError("User with given ID does not exist.", field_name='user_id')
