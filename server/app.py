@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import create_access_token, get_jwt_identity, verify_jwt_in_request
 
 from config import app, db, api, jwt
-from models import User, Recipe, UserSchema, RecipeSchema
+from models import User, Expenses, UserSchema, ExpensesSchema
 
 @app.before_request
 def check_if_logged_in():
