@@ -30,13 +30,23 @@ class User(db.Model):
         CheckConstraint("length(username) >= 5", name="username_min_length"),
     )
 
+    @model_validates('username')
+    def validate_username(self, key, value):
+        if not isinstance(value, str):
+            raise ValueError(f"{key} must be a string.")
+        if len(value) < 5:
+            raise ValueError(f"{key} must be at least 5 characters long.")
+        if User.query.filter_by(username=value).first():
+            raise ValueError(f"{key} must be unique.")        
+        return value
+
 
 class Expenses(db.Model):
     __tablename__ = 'expenses'
 
     id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
@@ -45,3 +55,27 @@ class Expenses(db.Model):
         CheckConstraint("amount > 0", name="positive_amount"),
         CheckConstraint(f"category IN ({', '.join([f'\'{choice}\'' for choice in category_choices])})", name="valid_category")
     )
+
+    @model_validates('amount')
+    def validate_amount(self, key, value):
+        if not isinstance(value, (int, float)):
+            raise ValueError(f"{key} must be a number.")
+        if value <= 0:
+            raise ValueError(f"{key} must be greater than 0.")        
+        return value
+
+    @model_validates('description')
+    def validate_description(self, key, value):
+        if not isinstance(value, str):
+            raise ValueError(f"{key} must be a string.")
+        if len(value) < 5:
+            raise ValueError(f"{key} must be at least 5 characters long.")        
+        return value
+    
+    @model_validates('category')
+    def validate_category(self, key, value):
+        if not isinstance(value, str):
+            raise ValueError(f"{key} must be a string.")
+        if value not in category_choices:
+            raise ValueError(f"{key} must be one of {category_choices}.")        
+        return value
