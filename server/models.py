@@ -1,7 +1,7 @@
 from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import validates as model_validates
 from sqlalchemy.ext.hybrid import hybrid_property
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from marshmallow import Schema, fields, validates_schema, ValidationError, RAISE
 
 from config import db, bcrypt
 
@@ -93,6 +93,10 @@ class UserSchema(Schema):
 
     expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
 
+    class Meta:
+        unknown = RAISE
+        ordered = True
+
 
 
 class ExpensesSchema(Schema):
@@ -103,3 +107,7 @@ class ExpensesSchema(Schema):
     user_id = fields.Int(load_only=True, required=True)
 
     user = fields.Nested(UserSchema(exclude=('expenses',)), many=True, dump_only=True)
+
+    class Meta:
+        unknown = RAISE
+        ordered = True
