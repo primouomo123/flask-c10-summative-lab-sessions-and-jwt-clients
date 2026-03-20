@@ -1,7 +1,7 @@
 from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import validates as model_validates
 from sqlalchemy.ext.hybrid import hybrid_property
-from marshmallow import Schema, fields, validate, validates as schema_validates, ValidationError, RAISE
+from marshmallow import Schema, fields, validate, validates as schema_validates, ValidationError, RAISE, post_load
 
 from config import db, bcrypt
 
@@ -41,6 +41,9 @@ class User(db.Model):
         return value
     
     expenses = db.relationship('Expenses', back_populates='user', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f"<User id={self.id} username={self.username}>"
 
 
 class Expenses(db.Model):
@@ -84,6 +87,9 @@ class Expenses(db.Model):
     
     user = db.relationship('User', back_populates='expenses')
 
+    def __repr__(self):
+        return f"<Expenses id={self.id} amount={self.amount} description={self.description} category={self.category} user_id={self.user_id}>"
+
 
 
 class UserSchema(Schema):
@@ -106,6 +112,12 @@ class UserSchema(Schema):
         if User.query.filter_by(username=value).first():
             raise ValidationError("Username must be unique.", field_name='username')
         return value
+    
+    @post_load
+    def create_user(self, data, **kwargs):
+        user = User(username=data['username'])
+        user.password_hash = data['password_hash']
+        return user
             
 
 
@@ -155,3 +167,7 @@ class ExpensesSchema(Schema):
             raise ValidationError("User ID must be a positive integer.", field_name='user_id')
         if not User.query.get(user_id):
             raise ValidationError("User with given ID does not exist.", field_name='user_id')
+    
+    @post_load
+    def create_expense(self, data, **kwargs):
+        return Expenses(**data)

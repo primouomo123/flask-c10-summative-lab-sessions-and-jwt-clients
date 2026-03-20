@@ -16,7 +16,7 @@ def check_if_logged_in():
     ]
 
     if (request.endpoint) not in open_access_list and (not verify_jwt_in_request()):
-        return {'error': '401 Unauthorized'}, 401
+        return make_response(jsonify({'error': '401 Unauthorized'}), 401)
 
 class Signup(Resource):
     def post(self):
@@ -25,13 +25,9 @@ class Signup(Resource):
 
         username = request_json.get('username')
         password = request_json.get('password')
-        image_url = request_json.get('image_url')
-        bio = request_json.get('bio')
 
         user = User(
-            username=username,
-            image_url=image_url,
-            bio=bio
+            username=username
         )
         user.password_hash = password
         
@@ -41,7 +37,7 @@ class Signup(Resource):
             access_token = create_access_token(identity=str(user.id))
             return make_response(jsonify(token=access_token, user=UserSchema().dump(user)), 200)
         except IntegrityError:
-            return {'errors': ['422 Unprocessable Entity']}, 422
+            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
 class WhoAmI(Resource):
     def get(self):
@@ -49,7 +45,7 @@ class WhoAmI(Resource):
             
         user = User.query.filter(User.id == user_id).first()
         
-        return UserSchema().dump(user), 200
+        return make_response(jsonify(UserSchema().dump(user)), 200)
 
 
 class Login(Resource):
@@ -64,11 +60,72 @@ class Login(Resource):
             token = create_access_token(identity=str(user.id))
             return make_response(jsonify(token=token, user=UserSchema().dump(user)), 200)
 
-        return {'errors': ['401 Unauthorized']}, 401
+        return make_response(jsonify({'errors': ['401 Unauthorized']}), 401)
+
+class ExpensesList(Resource):
+    def get(self):
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 5, type=int)
+        user_id = get_jwt_identity()
+        expenses = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
+                                                                               per_page=per_page,
+                                                                               error_out=False)
+        return make_response(jsonify({"page": page,
+                                      "per_page": per_page,
+                                      "expenses": ExpensesSchema(many=True).dump(expenses.items)}), 200)
+    
+    def post(self):
+        user_id = get_jwt_identity()
+        request_json = request.get_json()
+        request_json['user_id'] = user_id
+
+        try:
+            expense = ExpensesSchema().load(request_json)
+            db.session.add(expense)
+            db.session.commit()
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 201)
+        except Exception as e:
+            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
+
+class ExpenseDetail(Resource):
+    def get(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if expense:
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 200)
+        return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+    def patch(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if not expense:
+            return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+        request_json = request.get_json()
+        for key, value in request_json.items():
+            setattr(expense, key, value)
+
+        try:
+            db.session.commit()
+            return make_response(jsonify(ExpensesSchema().dump(expense)), 200)
+        except Exception as e:
+            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
+    
+    def delete(self, id):
+        user_id = get_jwt_identity()
+        expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
+        if not expense:
+            return make_response(jsonify({'errors': ['404 Not Found']}), 404)
+
+        db.session.delete(expense)
+        db.session.commit()
+        return make_response(jsonify({}), 204)
 
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(WhoAmI, '/me', endpoint='me')
 api.add_resource(Login, '/login', endpoint='login')
+api.add_resource(ExpensesList, '/expenses', endpoint='expenses')
+api.add_resource(ExpenseDetail, '/expenses/<int:id>', endpoint='expense_detail')
 
 
 if __name__ == '__main__':
