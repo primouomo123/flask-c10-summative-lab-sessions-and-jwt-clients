@@ -27,15 +27,15 @@ class User(db.Model):
         return bcrypt.check_password_hash(self._password_hash, password.encode('utf-8'))
     
     __table_args__ = (
-        CheckConstraint("length(username) >= 5", name="username_min_length"),
+        CheckConstraint("length(username) >= 3", name="username_min_length"),
     )
 
     @model_validates('username')
     def validate_username(self, key, value):
         if not isinstance(value, str):
             raise ValueError(f"{key} must be a string.")
-        if len(value) < 5:
-            raise ValueError(f"{key} must be at least 5 characters long.")
+        if len(value) < 3:
+            raise ValueError(f"{key} must be at least 3 characters long.")
         if User.query.filter_by(username=value).first():
             raise ValueError(f"{key} must be unique.")        
         return value
@@ -88,7 +88,7 @@ class Expenses(db.Model):
 
 class UserSchema(Schema):
     id = fields.Int(dump_only=True)
-    username = fields.Str(required=True, validate=validate.Length(min=5, max=50))
+    username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(min=128, max=128))
 
     expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
@@ -101,8 +101,8 @@ class UserSchema(Schema):
     def validate_unique_username(self, value, **kwargs):
         if not isinstance(value, str):
             raise ValidationError("Username must be a string.", field_name='username')
-        if len(value) < 5 or len(value) > 50:
-            raise ValidationError("Username must be between 5 and 50 characters long.", field_name='username')
+        if len(value) < 3 or len(value) > 50:
+            raise ValidationError("Username must be between 3 and 50 characters long.", field_name='username')
         if User.query.filter_by(username=value).first():
             raise ValidationError("Username must be unique.", field_name='username')
         return value
