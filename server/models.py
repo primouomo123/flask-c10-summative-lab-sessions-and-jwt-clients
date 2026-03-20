@@ -83,3 +83,23 @@ class Expenses(db.Model):
         return value
     
     user = db.relationship('User', back_populates='expenses')
+
+
+
+class UserSchema(Schema):
+    id = fields.Int(dump_only=True)
+    username = fields.Str(required=True)
+    password_hash = fields.Str(load_only=True, required=True)
+
+    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
+
+
+
+class ExpensesSchema(Schema):
+    id = fields.Int(dump_only=True)
+    amount = fields.Float(required=True)
+    description = fields.Str(required=True)
+    category = fields.Str(required=True)
+    user_id = fields.Int(load_only=True, required=True)
+
+    user = fields.Nested(UserSchema(exclude=('expenses',)), many=True, dump_only=True)
