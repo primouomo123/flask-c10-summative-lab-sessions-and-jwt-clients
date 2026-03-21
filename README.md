@@ -6,23 +6,23 @@ A RESTful API for managing user accounts and personal expenses, built with Flask
 ## Installation Instructions
 1. **Clone the repository**
 2. **Install dependencies and enter the virtual environment:**
-   ```bash
-   pipenv install
-   pipenv shell
-   ```
+```bash
+pipenv install
+pipenv shell
+```
 3. **Environment variables:**
    - The .env file should not be in GitHub because it contains sensitive information, however, it's here for being a school project.
 
 4. **Run database migrations:**
-   ```bash
-   cd server
-   flask db upgrade
-   ```
+```bash
+cd server
+flask db upgrade
+```
 5. **Seed the database:**
-   From the `/server` directory run:
-   ```bash
-   python seed.py
-   ```
+From the `/server` directory run:
+```bash
+python seed.py
+```
 
 ## Run Instructions
 From the `/server` directory, start the Flask server:
@@ -111,4 +111,3 @@ Please keep the quotes in the url above, so it works (because of the pagination 
     curl -X DELETE http://127.0.0.1:5555/expenses/<EXPENSE_ID> \
     -H "Authorization: Bearer <TOKEN>"
     ```
-    
