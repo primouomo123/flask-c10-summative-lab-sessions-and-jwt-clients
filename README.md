@@ -86,6 +86,12 @@ All endpoints (except `/signup` and `/login`) require a valid JWT in the `Author
     curl -X GET http://localhost:5555/expenses \
     -H "Authorization: Bearer <TOKEN>"
 
+6. **Get All Expenses using the pagination parameters (replace <PAGE_NUMBER> with the actual page number, replace <ITEMS_PER_PAGE> with the desired number of items per page, and replace <TOKEN> with your JWT):**
+    curl -X GET "http://localhost:5555/expenses?page=<PAGE_NUMBER>&per_page=<ITEMS_PER_PAGE>" \
+    -H "Authorization: Bearer <TOKEN>"
+
+Please keep the quotes in the url above, so it works (because of the pagination special characters)
+
 6. **Get a Specific Expense (replace <EXPENSE_ID> with the actual expense id> and replace <TOKEN> with your JWT):**:
     ```bash
     curl -X GET http://localhost:5555/expenses/<EXPENSE_ID> \
