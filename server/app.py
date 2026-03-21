@@ -10,15 +10,16 @@ from models import User, Expenses, UserSchema, ExpensesSchema
 
 @app.before_request
 def check_if_logged_in():
-    open_access_list = [
-        'signup',
-        'login'
-    ]
+    open_access_list = ['signup', 'login']
 
-    if (request.endpoint) not in open_access_list and (not verify_jwt_in_request()):
-        return make_response(jsonify({'error': '401 Unauthorized'}), 401)
+    if request.endpoint not in open_access_list:
+        try:
+            verify_jwt_in_request()
+        except Exception:
+            return make_response(jsonify({'error': '401 Unauthorized'}), 401)
 
 class Signup(Resource):
+    """Resource for user signup."""
     def post(self):
 
         request_json = request.get_json()
@@ -40,15 +41,20 @@ class Signup(Resource):
             return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
 class WhoAmI(Resource):
+    """Resource for retrieving the current user's information."""
     def get(self):
         user_id = get_jwt_identity()
             
         user = User.query.filter(User.id == user_id).first()
-        
-        return make_response(jsonify(UserSchema().dump(user)), 200)
 
+        # I am using a Method field here to allow for optional limiting of the number of expenses
+        # returned in the user schema context.
+        schema = UserSchema()
+        schema.context = {"limit": 5}    
+        return make_response(jsonify(schema.dump(user)), 200)
 
 class Login(Resource):
+    """Resource for user login."""
     def post(self):
 
         username = request.json['username']
@@ -58,26 +64,34 @@ class Login(Resource):
 
         if user and user.authenticate(password):
             token = create_access_token(identity=str(user.id))
-            return make_response(jsonify(token=token, user=UserSchema().dump(user)), 200)
+
+            # I am using a Method field here to allow for optional limiting of the number of expenses
+            # returned in the user schema context.
+            schema = UserSchema()
+            schema.context = {"limit": 5}
+            return make_response(jsonify(token=token, user=schema.dump(user)), 200)
 
         return make_response(jsonify({'errors': ['401 Unauthorized']}), 401)
 
 class ExpensesList(Resource):
+    """Resource for managing the list of expenses."""
     def get(self):
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 5, type=int)
         user_id = get_jwt_identity()
-        expenses = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
+        pagination = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
                                                                                per_page=per_page,
                                                                                error_out=False)
-        return make_response(jsonify({"page": page,
-                                      "per_page": per_page,
-                                      "expenses": ExpensesSchema(many=True).dump(expenses.items)}), 200)
+        return make_response(jsonify({"page": pagination.page,
+                                      "per_page": pagination.per_page,
+                                      "total": pagination.total,
+                                      "total_pages": pagination.pages,
+                                      "expenses": ExpensesSchema(many=True).dump(pagination.items)}), 200)
     
     def post(self):
         user_id = get_jwt_identity()
         request_json = request.get_json()
-        request_json['user_id'] = user_id
+        request_json['user_id'] = int(user_id)
 
         try:
             expense = ExpensesSchema().load(request_json)
@@ -85,9 +99,11 @@ class ExpensesList(Resource):
             db.session.commit()
             return make_response(jsonify(ExpensesSchema().dump(expense)), 201)
         except Exception as e:
-            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
+            print(e)
+            return make_response(jsonify({'errors': str(e)}), 422)
 
 class ExpenseDetail(Resource):
+    """Resource for managing a single expense."""
     def get(self, id):
         user_id = get_jwt_identity()
         expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()
@@ -126,7 +142,6 @@ api.add_resource(WhoAmI, '/me', endpoint='me')
 api.add_resource(Login, '/login', endpoint='login')
 api.add_resource(ExpensesList, '/expenses', endpoint='expenses')
 api.add_resource(ExpenseDetail, '/expenses/<int:id>', endpoint='expense_detail')
-
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)

@@ -8,6 +8,7 @@ from config import db, bcrypt
 category_choices = ['Food', 'Transportation', 'Entertainment', 'Utilities', 'Other']
 
 class User(db.Model):
+    """Model for the users table."""
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -45,8 +46,8 @@ class User(db.Model):
     def __repr__(self):
         return f"<User id={self.id} username={self.username}>"
 
-
 class Expenses(db.Model):
+    """Model for the expenses table."""
     __tablename__ = 'expenses'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -91,13 +92,30 @@ class Expenses(db.Model):
         return f"<Expenses id={self.id} amount={self.amount} description={self.description} category={self.category} user_id={self.user_id}>"
 
 
-
 class UserSchema(Schema):
     id = fields.Int(dump_only=True)
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
-    password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(min=128, max=128))
+    password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(equal=128))
 
-    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
+    # I am using a Method field here to allow for optional limiting of the number of expenses
+    # returned in the user schema context.
+    # I did it because if there are a lot of expenses for a user, it could cause performance issues
+    # or it could get messy when trying to serialize the user data.
+    expenses = fields.Method("get_expenses", dump_only=True)
+
+    def get_expenses(self, obj):
+        """Get optional limit from context"""
+        limit = self.context.get("limit")
+
+        expenses = obj.expenses
+
+        if limit is not None:
+            expenses = expenses[:limit]
+
+        return ExpensesSchema(
+            many=True,
+            exclude=('user',)
+        ).dump(expenses)
 
     class Meta:
         unknown = RAISE
@@ -120,7 +138,6 @@ class UserSchema(Schema):
         return user
             
 
-
 class ExpensesSchema(Schema):
     id = fields.Int(dump_only=True)
     amount = fields.Float(required=True, validate=validate.Range(min=0.01))
@@ -128,7 +145,7 @@ class ExpensesSchema(Schema):
     category = fields.Str(required=True, validate=validate.OneOf(category_choices))
     user_id = fields.Int(load_only=True, required=True)
 
-    user = fields.Nested(UserSchema(exclude=('expenses',)), many=True, dump_only=True)
+    user = fields.Nested(UserSchema(exclude=('expenses',)), dump_only=True)
 
     class Meta:
         unknown = RAISE
@@ -136,7 +153,7 @@ class ExpensesSchema(Schema):
     
     @schema_validates('amount')
     def validate_amount(self, value, **kwargs):
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, float):
             raise ValidationError("Amount must be a number.", field_name='amount')
         if value <= 0:
             raise ValidationError("Amount must be greater than 0.", field_name='amount')
@@ -160,12 +177,11 @@ class ExpensesSchema(Schema):
     
     @schema_validates('user_id')
     def validate_user_exists(self, value, **kwargs):
-        user_id = value.get('user_id')
         if not isinstance(value, int):
             raise ValidationError("User ID must be an integer.", field_name='user_id')
-        if user_id <= 0:
+        if value <= 0:
             raise ValidationError("User ID must be a positive integer.", field_name='user_id')
-        if not User.query.get(user_id):
+        if not User.query.get(value):
             raise ValidationError("User with given ID does not exist.", field_name='user_id')
     
     @post_load
