@@ -1,4 +1,4 @@
-# Flask Expense Tracker API
+# Flask Productivity App
 
 ## Project Description
 A RESTful API for managing user accounts and personal expenses, built with Flask, SQLAlchemy, Flask-JWT-Extended, and Marshmallow. The API supports user registration, authentication (JWT), and CRUD operations for expense tracking. It is designed for use of JWT-based client application.
