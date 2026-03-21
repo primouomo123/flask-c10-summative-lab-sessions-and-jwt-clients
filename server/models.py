@@ -95,7 +95,7 @@ class UserSchema(Schema):
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(min=128, max=128))
 
-    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), dump_only=True)
+    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), many=True, dump_only=True)
 
     class Meta:
         unknown = RAISE
