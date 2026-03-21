@@ -1,4 +1,4 @@
-# Flask Expense Tracker API
+# Flask Productivity App
 
 ## Project Description
 A RESTful API for managing user accounts and personal expenses, built with Flask, SQLAlchemy, Flask-JWT-Extended, and Marshmallow. The API supports user registration, authentication (JWT), and CRUD operations for expense tracking. It is designed for use of JWT-based client application.
@@ -6,23 +6,23 @@ A RESTful API for managing user accounts and personal expenses, built with Flask
 ## Installation Instructions
 1. **Clone the repository**
 2. **Install dependencies and enter the virtual environment:**
-   ```bash
-   pipenv install
-   pipenv shell
-   ```
+```bash
+pipenv install
+pipenv shell
+```
 3. **Environment variables:**
    - The .env file should not be in GitHub because it contains sensitive information, however, it's here for being a school project.
 
 4. **Run database migrations:**
-   ```bash
-   cd server
-   flask db upgrade
-   ```
+```bash
+cd server
+flask db upgrade
+```
 5. **Seed the database:**
-   From the `/server` directory run:
-   ```bash
-   python seed.py
-   ```
+From the `/server` directory run:
+```bash
+python seed.py
+```
 
 ## Run Instructions
 From the `/server` directory, start the Flask server:
@@ -86,6 +86,12 @@ All endpoints (except `/signup` and `/login`) require a valid JWT in the `Author
     curl -X GET http://localhost:5555/expenses \
     -H "Authorization: Bearer <TOKEN>"
 
+6. **Get All Expenses using the pagination parameters (replace <PAGE_NUMBER> with the actual page number, replace <ITEMS_PER_PAGE> with the desired number of items per page, and replace <TOKEN> with your JWT):**
+    curl -X GET "http://localhost:5555/expenses?page=<PAGE_NUMBER>&per_page=<ITEMS_PER_PAGE>" \
+    -H "Authorization: Bearer <TOKEN>"
+
+Please keep the quotes in the url above, so it works (because of the pagination special characters)
+
 6. **Get a Specific Expense (replace <EXPENSE_ID> with the actual expense id> and replace <TOKEN> with your JWT):**:
     ```bash
     curl -X GET http://localhost:5555/expenses/<EXPENSE_ID> \
@@ -105,4 +111,3 @@ All endpoints (except `/signup` and `/login`) require a valid JWT in the `Author
     curl -X DELETE http://127.0.0.1:5555/expenses/<EXPENSE_ID> \
     -H "Authorization: Bearer <TOKEN>"
     ```
-    
