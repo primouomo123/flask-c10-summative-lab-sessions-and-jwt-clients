@@ -36,7 +36,11 @@ class Signup(Resource):
             db.session.add(user)
             db.session.commit()
             access_token = create_access_token(identity=str(user.id))
-            return make_response(jsonify(token=access_token, user=UserSchema().dump(user)), 200)
+            # I am using a Method field here to allow for optional limiting of the number of expenses
+            # returned in the user schema context.
+            schema = UserSchema()
+            schema.context = {"limit": 5}
+            return make_response(jsonify(token=access_token, user=schema.dump(user)), 200)
         except IntegrityError:
             return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
