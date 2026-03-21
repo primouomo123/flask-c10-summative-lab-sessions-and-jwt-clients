@@ -19,6 +19,7 @@ def check_if_logged_in():
             return make_response(jsonify({'error': '401 Unauthorized'}), 401)
 
 class Signup(Resource):
+    """Resource for user signup."""
     def post(self):
 
         request_json = request.get_json()
@@ -40,16 +41,20 @@ class Signup(Resource):
             return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
 
 class WhoAmI(Resource):
+    """Resource for retrieving the current user's information."""
     def get(self):
         user_id = get_jwt_identity()
             
         user = User.query.filter(User.id == user_id).first()
 
+        # I am using a Method field here to allow for optional limiting of the number of expenses
+        # returned in the user schema context.
         schema = UserSchema()
         schema.context = {"limit": 5}    
         return make_response(jsonify(schema.dump(user)), 200)
 
 class Login(Resource):
+    """Resource for user login."""
     def post(self):
 
         username = request.json['username']
@@ -59,6 +64,9 @@ class Login(Resource):
 
         if user and user.authenticate(password):
             token = create_access_token(identity=str(user.id))
+
+            # I am using a Method field here to allow for optional limiting of the number of expenses
+            # returned in the user schema context.
             schema = UserSchema()
             schema.context = {"limit": 5}
             return make_response(jsonify(token=token, user=schema.dump(user)), 200)
@@ -66,6 +74,7 @@ class Login(Resource):
         return make_response(jsonify({'errors': ['401 Unauthorized']}), 401)
 
 class ExpensesList(Resource):
+    """Resource for managing the list of expenses."""
     def get(self):
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 5, type=int)
@@ -94,6 +103,7 @@ class ExpensesList(Resource):
             return make_response(jsonify({'errors': str(e)}), 422)
 
 class ExpenseDetail(Resource):
+    """Resource for managing a single expense."""
     def get(self, id):
         user_id = get_jwt_identity()
         expense = Expenses.query.filter(Expenses.id == id, Expenses.user_id == user_id).first()

@@ -8,6 +8,7 @@ from config import db, bcrypt
 category_choices = ['Food', 'Transportation', 'Entertainment', 'Utilities', 'Other']
 
 class User(db.Model):
+    """Model for the users table."""
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +47,7 @@ class User(db.Model):
         return f"<User id={self.id} username={self.username}>"
 
 class Expenses(db.Model):
+    """Model for the expenses table."""
     __tablename__ = 'expenses'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -95,10 +97,14 @@ class UserSchema(Schema):
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(equal=128))
 
+    # I am using a Method field here to allow for optional limiting of the number of expenses
+    # returned in the user schema context.
+    # I did it because if there are a lot of expenses for a user, it could cause performance issues
+    # or it could get messy when trying to serialize the user data.
     expenses = fields.Method("get_expenses", dump_only=True)
 
     def get_expenses(self, obj):
-        # Get optional limit from context
+        """Get optional limit from context"""
         limit = self.context.get("limit")
 
         expenses = obj.expenses
