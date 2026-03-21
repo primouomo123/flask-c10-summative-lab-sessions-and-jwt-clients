@@ -45,7 +45,6 @@ class User(db.Model):
     def __repr__(self):
         return f"<User id={self.id} username={self.username}>"
 
-
 class Expenses(db.Model):
     __tablename__ = 'expenses'
 
@@ -91,7 +90,6 @@ class Expenses(db.Model):
         return f"<Expenses id={self.id} amount={self.amount} description={self.description} category={self.category} user_id={self.user_id}>"
 
 
-
 class UserSchema(Schema):
     id = fields.Int(dump_only=True)
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
@@ -120,7 +118,6 @@ class UserSchema(Schema):
         return user
             
 
-
 class ExpensesSchema(Schema):
     id = fields.Int(dump_only=True)
     amount = fields.Float(required=True, validate=validate.Range(min=0.01))
@@ -128,7 +125,7 @@ class ExpensesSchema(Schema):
     category = fields.Str(required=True, validate=validate.OneOf(category_choices))
     user_id = fields.Int(load_only=True, required=True)
 
-    user = fields.Nested(UserSchema(exclude=('expenses',)), many=True, dump_only=True)
+    user = fields.Nested(UserSchema(exclude=('expenses',)), dump_only=True)
 
     class Meta:
         unknown = RAISE
@@ -136,7 +133,7 @@ class ExpensesSchema(Schema):
     
     @schema_validates('amount')
     def validate_amount(self, value, **kwargs):
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, float):
             raise ValidationError("Amount must be a number.", field_name='amount')
         if value <= 0:
             raise ValidationError("Amount must be greater than 0.", field_name='amount')
@@ -160,12 +157,11 @@ class ExpensesSchema(Schema):
     
     @schema_validates('user_id')
     def validate_user_exists(self, value, **kwargs):
-        user_id = value.get('user_id')
         if not isinstance(value, int):
             raise ValidationError("User ID must be an integer.", field_name='user_id')
-        if user_id <= 0:
+        if value <= 0:
             raise ValidationError("User ID must be a positive integer.", field_name='user_id')
-        if not User.query.get(user_id):
+        if not User.query.get(value):
             raise ValidationError("User with given ID does not exist.", field_name='user_id')
     
     @post_load

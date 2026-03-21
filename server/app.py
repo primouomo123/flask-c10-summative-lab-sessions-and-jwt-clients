@@ -47,7 +47,6 @@ class WhoAmI(Resource):
         
         return make_response(jsonify(UserSchema().dump(user)), 200)
 
-
 class Login(Resource):
     def post(self):
 
@@ -67,17 +66,19 @@ class ExpensesList(Resource):
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 5, type=int)
         user_id = get_jwt_identity()
-        expenses = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
+        pagination = Expenses.query.filter(Expenses.user_id == user_id).paginate(page=page,
                                                                                per_page=per_page,
                                                                                error_out=False)
-        return make_response(jsonify({"page": page,
-                                      "per_page": per_page,
-                                      "expenses": ExpensesSchema(many=True).dump(expenses.items)}), 200)
+        return make_response(jsonify({"page": pagination.page,
+                                      "per_page": pagination.per_page,
+                                      "total": pagination.total,
+                                      "total_pages": pagination.pages,
+                                      "expenses": ExpensesSchema(many=True).dump(pagination.items)}), 200)
     
     def post(self):
         user_id = get_jwt_identity()
         request_json = request.get_json()
-        request_json['user_id'] = user_id
+        request_json['user_id'] = int(user_id)
 
         try:
             expense = ExpensesSchema().load(request_json)
@@ -85,7 +86,8 @@ class ExpensesList(Resource):
             db.session.commit()
             return make_response(jsonify(ExpensesSchema().dump(expense)), 201)
         except Exception as e:
-            return make_response(jsonify({'errors': ['422 Unprocessable Entity']}), 422)
+            print(e)
+            return make_response(jsonify({'errors': str(e)}), 422)
 
 class ExpenseDetail(Resource):
     def get(self, id):
@@ -126,7 +128,6 @@ api.add_resource(WhoAmI, '/me', endpoint='me')
 api.add_resource(Login, '/login', endpoint='login')
 api.add_resource(ExpensesList, '/expenses', endpoint='expenses')
 api.add_resource(ExpenseDetail, '/expenses/<int:id>', endpoint='expense_detail')
-
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
