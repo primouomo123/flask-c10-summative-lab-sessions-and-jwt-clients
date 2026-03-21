@@ -93,9 +93,23 @@ class Expenses(db.Model):
 class UserSchema(Schema):
     id = fields.Int(dump_only=True)
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
-    password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(min=128, max=128))
+    password_hash = fields.Str(load_only=True, required=True, validate=validate.Length(equal=128))
 
-    expenses = fields.Nested(lambda: ExpensesSchema(exclude=('user',)), many=True, dump_only=True)
+    expenses = fields.Method("get_expenses", dump_only=True)
+
+    def get_expenses(self, obj):
+        # Get optional limit from context
+        limit = self.context.get("limit")
+
+        expenses = obj.expenses
+
+        if limit is not None:
+            expenses = expenses[:limit]
+
+        return ExpensesSchema(
+            many=True,
+            exclude=('user',)
+        ).dump(expenses)
 
     class Meta:
         unknown = RAISE

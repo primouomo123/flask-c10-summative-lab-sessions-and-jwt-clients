@@ -10,13 +10,13 @@ from models import User, Expenses, UserSchema, ExpensesSchema
 
 @app.before_request
 def check_if_logged_in():
-    open_access_list = [
-        'signup',
-        'login'
-    ]
+    open_access_list = ['signup', 'login']
 
-    if (request.endpoint) not in open_access_list and (not verify_jwt_in_request()):
-        return make_response(jsonify({'error': '401 Unauthorized'}), 401)
+    if request.endpoint not in open_access_list:
+        try:
+            verify_jwt_in_request()
+        except Exception:
+            return make_response(jsonify({'error': '401 Unauthorized'}), 401)
 
 class Signup(Resource):
     def post(self):
@@ -44,8 +44,10 @@ class WhoAmI(Resource):
         user_id = get_jwt_identity()
             
         user = User.query.filter(User.id == user_id).first()
-        
-        return make_response(jsonify(UserSchema().dump(user)), 200)
+
+        schema = UserSchema()
+        schema.context = {"limit": 5}    
+        return make_response(jsonify(schema.dump(user)), 200)
 
 class Login(Resource):
     def post(self):
@@ -57,7 +59,9 @@ class Login(Resource):
 
         if user and user.authenticate(password):
             token = create_access_token(identity=str(user.id))
-            return make_response(jsonify(token=token, user=UserSchema().dump(user)), 200)
+            schema = UserSchema()
+            schema.context = {"limit": 5}
+            return make_response(jsonify(token=token, user=schema.dump(user)), 200)
 
         return make_response(jsonify({'errors': ['401 Unauthorized']}), 401)
 
